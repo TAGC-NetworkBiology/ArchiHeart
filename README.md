@@ -134,11 +134,13 @@ ArchiOldHeart
 
 ---
 
-## Install Singularity and Docker
+### Install Singularity and Docker
 
 You need to install Singularity v2.6 on your system to run the complete analysis. Follow the instructions here : https://sylabs.io/guides/2.6/admin-guide/
 
-## Install Snakemake
+---
+
+### Install Snakemake
 
 You need to install Snakemake to run the complete analysis workflow. You can use your preferred solution : https://snakemake.readthedocs.io/en/stable/getting_started/installation.html
 
@@ -146,9 +148,10 @@ In the **config** folder, you will find a **python_virtualenv_freeze.txt** file 
 See https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/ for more details.
 
 The following scripts use a virtual environment called **.phenosnip** and stored in the **WORKING_DIR**.
+
 ---
 
-## Download the Singularity images
+### Download the Singularity images
 
 Singularity images files are stored on Zenodo **TODO: Add the Singularity containers DOI**. Execute the following commands to download the images:
 
@@ -186,6 +189,24 @@ ArchiOldHeart
     └── phenosnip_singleagegwas.img
 ```
 
+---
+---
+
+## Run the analysis
+
+To run the complete analysis, you have to run the three workflow in the following order:
+
+```
+    cd $WORKING_DIR
+    ./launch_1_lines_analysis_local.sh
+    ./launch_2_gwas_analysis_local.sh
+    ./launch_3_epistasis_analysis_local.sh
+```
+
+**IMPORTANT NOTES:**
+
+* The previous command launch the analysis on a local computer. To run them in a SLURM cluster, use the **_slurm** files.
+* The GWAS and Epistasis are computationally intensive. Prefer to run them on a powerfull workstation or on a HPC.
 
 
 
