@@ -1,4 +1,4 @@
-# ArchiOldHeart : Genetic architecture of natural variation of cardiac performance in flies 
+# ArchiHeart : Genetic architecture of natural variation of cardiac performance in flies 
 
 ## Article information
 
@@ -23,18 +23,18 @@ Saswati Saha 1,†, Lionel Spinelli 1,†, Jaime A Castro-Mondragon 2, Anaïs Ke
 
 ## Goal of the github
 
-This github project contains the instructions and material to reproduce the analyses reported in the article (and more). Source code are available in the github repository. Required data and built Singularity images are available on download. Instructions to reproduce the analyses are provided below.
+This github project contains the instructions and material to reproduce the analyses reported in the article (and more). Source codes are available in the github repository. Required data and built Singularity images are available on download. Instructions to reproduce the analyses are provided below.
 
 To reproduce the analysis, you have to first, prepare the environments (see "Prepare the Environments" section below), then execute the analysis step by step (see "Run the analysis" section below).
 
 ## Description of the dataset
 
-The dataset contains the cardiac phenotype data of 1 week old dropsophila. The data are stored in a SQlite database available on Zenodo (see below).
+The dataset contains the cardiac phenotype data of 1 week-old dropsophila. The data are stored in a SQlite database available on Zenodo (see below).
 
 ---
 ---
 
-## Prepare the environments
+## Prepare the environment
 
 In order to prepare the environment for analysis execution, it is required to:
 
@@ -49,10 +49,10 @@ Below you will find detailed instruction for each of these steps.
 
 ### Clone the github repository
 
-Use you favorite method to clone this repository in a chosen folder. This will create a folder **ArchiOldHeart** with all the source code. The following folder and file stucture will be created:
+Use you favorite method to clone this repository in a chosen folder. This will create a folder **ArchiHeart** with all the source code. The following folder and file stucture will be created:
 
 ```
-ArchiOldHeart
+ArchiHeart
 ├── LICENSE
 ├── README.md
 └── SingleAgeStudy
@@ -73,7 +73,7 @@ ArchiOldHeart
 
 The **input** folder contains the input data. Some are already present at repository clone, other will be downloaded from Zenodo (see below).
 
-The **script** folder contains the code used to execute the varios analysis steps.
+The **script** folder contains the code used to execute the various analysis steps.
 
 The **src** code contain python OOP code used during the analysis to manage the data coming from the SQlite database.
 
@@ -89,7 +89,7 @@ The files with **.sh** extension are bash files used to launch the analysis work
 
 Then, you must set an environment variable called **WORKING_DIR** with a value set to the path to this folder.
 
-For instance, if you have chosen to clone the Git repository in "/home/spinellil/workspace", then the **WORKING_DIR** variable will be set to "/home/spinellil/workspace/ArchiOldHeart"
+For instance, if you have chosen to clone the Git repository in "/home/spinellil/workspace", then the **WORKING_DIR** variable will be set to "/home/spinellil/workspace/ArchiHeart"
 
 On linux:
 
@@ -103,7 +103,7 @@ On linux:
 
 Data are available on Zenodo **TODO: Add the Data DOI**. You have to download:
 
-* The SQlite database containing the phenotype value and metadata value for each individual drosophila and the variant information from GDRP2 consortium
+* The SQlite database containing the phenotype value and metadata value for each individual drosophila and the variant information from DGRP2 consortium
 * The genotype data from the DGRP2 consortium (BED, BIM and FAM files)
 
 Use the following command on Linux:
@@ -121,7 +121,7 @@ Use the following command on Linux:
 Once done, the **input** folder will look like:
 
 ```
-ArchiOldHeart
+ArchiHeart
 └── SingleAgeStudy
     └──	input
 	├── cov_wolbachia_inversions.txt
@@ -167,7 +167,7 @@ On linux:
 One done, the folder will look like:
 
 ```
-ArchiOldHeart
+ArchiHeart
 ├── LICENSE
 ├── README.md
 └── SingleAgeStudy
@@ -194,7 +194,7 @@ ArchiOldHeart
 
 ## Run the analysis
 
-To run the complete analysis, you have to run the three workflow in the following order:
+To run the complete analysis, you have to run the three workflows in the following order:
 
 ```
     cd $WORKING_DIR
