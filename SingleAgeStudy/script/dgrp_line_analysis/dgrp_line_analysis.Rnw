@@ -1,0 +1,144 @@
+\documentclass{article}
+
+\usepackage{multicol}
+\usepackage{geometry}
+\usepackage{amsmath}
+
+\geometry{
+ a4paper,
+ total={210mm,297mm},
+ left=20mm,
+ right=20mm,
+ top=20mm,
+ bottom=20mm,
+ }
+
+\begin{document}
+
+\title{Ageing in Drosophila Melanogaster heart\\-\\
+        SNPnet project\\-\\
+        Analysis of DGRP data age by age}
+\author{Christine Brun, Aitor Gonzalez, Laurent Perrin, Pascal Rihet, Laurence Roder, Lionel Spinelli}
+\maketitle
+
+
+<<prepare_data, fig.keep="all", echo=FALSE, message=F, warning=F>>=
+
+# TO REMOVE IN PRODUCTION
+ #working_dir = "/home/spinelli/workspace/tagc-snpnet/phase6/src/execution/phenotypestatistics/ageanalysis/"
+ #data_dir = "/Project/SNPnet/DB/2016_12/PhenotypeStatisticsStrategy/data/"
+ #strain_input_file = paste( data_dir, "strain.csv" ,sep="")
+ #individual_input_file = paste( data_dir, "individual.csv" ,sep="")
+ #phenotype_data_input_file = paste( data_dir, "phenotype_data.csv" ,sep="")
+ #covariable_file = "/home/spinelli/Project/SNPnet/Data/DGRP/cov_wolbachia_inversions.txt"
+ #wolbachia_covariable_file = "/home/spinelli/Project/SNPnet/Data/DGRP/cov_wolbachia.txt"
+ #TRANSFORMATION_MODE = "removal"
+ #CORRECTION_MODE = "REMOVE_OUTLIERS"
+# END TO REMOVE
+
+  source( file.path( SCRIPT_DIR, "prepare_data.R"))
+  cat("\n\n Number of control strains : ", length( RAW_DATA_STRAIN_DF[ which( RAW_DATA_STRAIN_DF[ , STRAIN_CONTROL] == 1), STRAIN_NUMBER]))
+  cat("\n\n Number of DGRP strains : ", length( not_control_strain_set))
+  for( age in AGE_SET){
+    cat("\n\n Number of DGRP strains at age", age, ":", length( unique( RAW_DATA_INDIVIDUAL_DF[ which( 
+                                                                            RAW_DATA_INDIVIDUAL_DF[ , INDIVIDUAL_STRAIN] %in% not_control_strain_set
+                                                                            & RAW_DATA_INDIVIDUAL_DF[ , INDIVIDUAL_AGE] == age),
+                                                                        INDIVIDUAL_STRAIN])))
+  }
+  
+  cat("\nOptions used for this analysis are:\n")
+  cat("\n")
+  cat("\n  strain_input_file =", strain_input_file)
+  cat("\n  individual_input_file =", individual_input_file)
+  cat("\n  phenotype_data_input_file =", phenotype_data_input_file)
+  cat("\n  dgrp2_source_file =", dgrp2_source_file)
+  cat("\n  covariable_file =", covariable_file)
+  cat("\n  wolbachia covariable_file =", wolbachia_covariable_file)
+  cat("\n  PHENOTYPE_CORRECTION_MODE =", PHENOTYPE_CORRECTION_MODE)
+  cat("\n  GWAS_TRANSFORMATION_MODE =", GWAS_TRANSFORMATION_MODE)
+  cat("\n  date_correction_file =", date_correction_file)
+@
+
+
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+
+\newpage
+
+\section{Analysis of DGRP lines phenotype values}
+
+<<analysis_describe_strain_phenotype, fig.keep="all", echo=FALSE, message=F, warning=F>>=
+  source( file.path( SCRIPT_DIR, "analysis_describe_strain_phenotype.R"))
+@
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+
+\newpage
+
+\section{Comparison of strain mean values between phenotypes}
+
+In this section, we compute the mean of values of the DGRP lines for
+several phenotypes and we compare the values between phenotypes using unsupervised clustering techniques.
+
+The mean of values is computed with the values in the 1.5IQR interval i.e.
+if $\mu$ is the mean of the values of a strain for the considered phenotype, we keep all the values 
+$\left \{ v / v \in [ Q1 - 1.5 \times IQR; Q3 + 1.5 \times IQR] \right \}$.
+
+In order to have comparable mean values between phenotypes, the means of lines are normalized by the global mean of the phenotype
+along the lines i.e :
+
+\begin{equation}
+  \tilde \mu_s = \frac{N}{n_s} \frac{\sum_{i=1}^{n_s} v_s^i}{\sum_{i=1}^{N} v^i}
+\end{equation}
+
+where $n_s$ is the number of individual in strain $s$, $N$ is the total number of individuals in all strains, $v_s^i$ is the $i^{th}$ phenotype value
+of the strain $s$ and $v^i$ is the $i^{th}$ phenotype value over all strains.
+
+The first plot show the clustering on two dimensions (phenotypes and strains) using Spearman correlation coefficient on
+coeficient of variations. The content of clusters is reported after the plot (10 clusters).
+
+The second plot show a heatmap summarizing the phenotype Spearman correlation coefficient between phenotypes. The phenotypes
+are ordered according the clusters found before.
+
+The last analysis show the content of the clusters made on the strain dimension. 20 clusters are extracted and for each of them
+one look at the date the strains were measured. A large number of dates in clusters is an indication of no date bias.
+
+<<compare_phenotype_cv, fig.keep="all", echo=FALSE, message=F, warning=F>>=
+  source( file.path( SCRIPT_DIR, "analysis_compare_phenotypes.R"))
+@
+
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+
+\newpage
+
+\section{Production of phenotype files usefull for GWAS analysis}
+
+<<prepare_gwas_files, fig.keep="all", echo=FALSE, message=F, warning=F, split=T >>=
+  source( file.path( SCRIPT_DIR, "prepare_gwas_files.R"))
+  source( file.path( SCRIPT_DIR, "prepare_fastlmm_execution.R"))
+@
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+
+\newpage
+
+\section{Production of phenotype files usefull for epistasis analysis}
+
+<<prepare_espistasis_files, fig.keep="all", echo=FALSE, message=F, warning=F, split=T >>=
+  source( file.path( SCRIPT_DIR, "prepare_epistasis_files.R"))
+  source( file.path( SCRIPT_DIR, "prepare_fastepistasis_execution.R"))
+@
+
+\end{document}

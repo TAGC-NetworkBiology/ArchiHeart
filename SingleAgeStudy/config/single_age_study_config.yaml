@@ -1,0 +1,34 @@
+# List the folders required for analysis:
+
+# The SQLite DB file name
+db_name: Phenosnip.201612.sqlite
+
+# DGRP2 source file
+dgrp2_source_file: dgrp2
+
+# Wolbachia covariable_file
+wolbachia_covariable_file: cov_wolbachia.txt
+
+# All covariables file
+covariables_file: cov_wolbachia_inversions.txt
+
+# Correction mode : indicate the correction applied to the phenotype values during the control_line_analysis rule: 
+#   'NO_CORRECTION' : the phenotype values are provided without any correction
+#   'REMOVE_OUTLIERS' : the outlier values of each line are removed 
+#   'DATE_CORRECTION' :  the outlier values of each line are removed and the data are corrected for the date effect identified from the control line
+phenotype_correction_mode: "REMOVE_OUTLIERS"
+
+# GWAS transformation mode : indicate the transformation applied to the phenotype values before the GWAS: 
+#   'NONE' : the phenotype values are provided without any correction
+#   'REMOVE_OUTLIER_LINES' : the lines with a outlier value are removed (they may drive the GWAS model) 
+#   'LOG2' :  the phenotype values are transformed through a log2 function
+gwas_transformation_mode: "REMOVE_OUTLIER_LINES"
+
+# GWAS type I error (default value for first filtering)
+alpha: 0.0001
+
+# The list of phenotypes to focus on
+prefered_phenotypes: [ "DiastolicIntervals_Median", "SystolicIntervals_Median", "Heartperiod_Median", "Heartperiod_StdDevOnMedian", "DiastolicMeanDiameter", "SystolicMeanDiameter", "FractionalShortening"]
+
+# Data statistics type (should not be changed)
+data_stat_type: [ "MEAN", "CV"]

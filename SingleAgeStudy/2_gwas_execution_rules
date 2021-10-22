@@ -1,0 +1,163 @@
+
+# -----------------------------------------------------------------------------
+# Get some constants from config file
+# -----------------------------------------------------------------------------
+DB_NAME=config[ "db_name"]
+DGRP2_SOURCE_FILE = config[ "dgrp2_source_file"]
+ALL_COVARIABLES_FILE = config[ "covariables_file"]
+ALPHA = config[ "alpha"]
+SUFFIX_LIST =[ "100th", "1e-5", ALPHA]
+PREFERED_PHENOTYPES=config[ "prefered_phenotypes"]
+DATA_STAT_TYPE=config[ "data_stat_type"]
+
+# -----------------------------------------------------------------------------
+# Read the file containing all the information on the GWAS to be executed
+# and build list of parametr for the GWAS launch
+# file is formated with headers:
+# age;phenotype_name;input_folder;phenotype_file;families_file
+# -----------------------------------------------------------------------------
+import csv
+import os
+
+AGE_LIST = []
+PHENOTYPE_NAME_LIST = []
+DATA_STAT_TYPE_LIST = []
+for current_data_stat_type in DATA_STAT_TYPE:
+   with open( 'output/3_dgrp_line_analysis/gwas/execute_fastlmm_' + current_data_stat_type + '.txt') as csvfile:
+      csvreader = csv.DictReader( csvfile, delimiter =";")
+      for row in csvreader:
+         AGE_LIST.append( row[ "age"])
+         PHENOTYPE_NAME_LIST.append( row[ "phenotype_name"])
+         DATA_STAT_TYPE_LIST.append( current_data_stat_type)
+
+print( "Phenotype list =" + str( PHENOTYPE_NAME_LIST))
+print( "Age list =" + str(AGE_LIST))
+print( "Data stat type list =" + str(DATA_STAT_TYPE_LIST))
+
+# ===============================================
+# This global rule that require the resulting
+# file of the GWAS analysis pipeline
+# ===============================================
+
+rule all:
+   input:
+      #phenotype_gwas_result_files = expand( "output/4_gwas_execution/phenotype_{phenotype}_{age}W_ordered_GWASresults.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST)
+      #gwas_result_report = "output/5_gwas_result_analysis/gwas_result_analysis.pdf"
+      #signif_gene_mapped_files_1 = expand( expand( "output/6_gwas_result_gene_mapping/phenotype_{phenotype}_{age}W_ordered_GWASresults_signif{{suffix}}_genemap.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST), suffix=SUFFIX_LIST)
+      report_gwas_gene_mapping_analysis="output/7_gwas_gene_mapping_analysis/gwas_gene_mapping_analysis.html"
+      
+
+# ===============================================
+# This rule launch the GWAS analysis using the
+# files produced by the analysis of data
+# (single_age_analysis_rules snakefile)
+# ===============================================
+
+rule execute_gwas:
+   params:
+      genotype_file = "input/" + DGRP2_SOURCE_FILE,
+      alpha = ALPHA
+   input:
+      # The phenotype data prepared for GWAS analysis (procuded by Single Age Analysis step)
+      phenotype_gwas_ready_file = 'output/3_dgrp_line_analysis/gwas/phenotype_{phenotype}_{age}W_{data_stat_type}.txt',
+      # The list fo families (DGRP lines) per phenotype (procuded by Single Age Analysis step)
+      families_gwas_ready_files = 'output/3_dgrp_line_analysis/gwas/phenotype_{phenotype}_age_families_{age}W_{data_stat_type}.txt',
+      # The all covariables file (worlbachia + inversions)
+      covariables_file = "input/" + ALL_COVARIABLES_FILE
+   output:
+      ordered_phenotype_values = "output/4_gwas_execution/plink/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered.txt",
+      snp_results = "output/4_gwas_execution/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults.txt",
+      signif_snp_results = "output/4_gwas_execution/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif" + str( ALPHA) + ".txt",
+      manathan_plot = "output/4_gwas_execution/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_manathanPlot.png",
+      qqplot = "output/4_gwas_execution/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_QQPlot.png",
+      pbed = temp( "output/4_gwas_execution/plink/FastLMM.data.filtered_dgrp_phenotype_{phenotype}_{age}W_{data_stat_type}.bed"),
+      pbim = temp( "output/4_gwas_execution/plink/FastLMM.data.filtered_dgrp_phenotype_{phenotype}_{age}W_{data_stat_type}.bim"),
+      pfam = temp( "output/4_gwas_execution/plink/FastLMM.data.filtered_dgrp_phenotype_{phenotype}_{age}W_{data_stat_type}.fam"),
+      pnof = temp( "output/4_gwas_execution/plink/FastLMM.data.filtered_dgrp_phenotype_{phenotype}_{age}W_{data_stat_type}.nof"),
+      gmap = temp( "output/4_gwas_execution/plink/filtered_dgrp_phenotype_{phenotype}_{age}W_{data_stat_type}.map"),
+      gnof = temp( "output/4_gwas_execution/plink/filtered_dgrp_phenotype_{phenotype}_{age}W_{data_stat_type}.nof"),
+      gped = temp( "output/4_gwas_execution/plink/filtered_dgrp_phenotype_{phenotype}_{age}W_{data_stat_type}.ped")
+   threads: 1
+   singularity: "phenosnip_singleagegwas.img"
+   shell:
+      """
+      export PYTHONPATH=./src:$PYTHONPATH
+      export MPLBACKEND=Agg
+      python ./script/gwas_analysis/launch_gwas_execution.py -p {input.phenotype_gwas_ready_file} -c {input.covariables_file} -a {params.alpha} -g {params.genotype_file} -f {input.families_gwas_ready_files} -l log
+      """
+
+# ===============================================
+# This rule execute the analysis of phenotype
+# value of DGRP lines
+# ===============================================
+
+rule gwas_result_analysis:
+   params:
+      age_list=AGE_LIST,
+      phenotype_name_list=PHENOTYPE_NAME_LIST,
+      data_stat_type_list=DATA_STAT_TYPE_LIST
+   input:
+      ordered_phenotype_values_list = expand( "output/4_gwas_execution/plink/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST),
+      signif_snp_results_list = expand( "output/4_gwas_execution/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif" + str( ALPHA) + ".txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST),
+      manathan_plot_list = expand( "output/4_gwas_execution/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_manathanPlot.png", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST),
+      qqplot_list = expand( "output/4_gwas_execution/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_QQPlot.png", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST)
+   output:
+      # The analysis report PDF
+      report = "output/5_gwas_result_analysis/gwas_result_analysis.pdf",
+      # The list of most significant SNPs
+      most_signif_snp_result_files_1e_5 = expand( "output/5_gwas_result_analysis/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif1e-5.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST),
+      most_signif_snp_result_files_100th = expand( "output/5_gwas_result_analysis/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif100th.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST),
+      most_signif_snp_result_files_1e_5_list = expand( "output/5_gwas_result_analysis/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif1e-5_list.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST),
+      most_signif_snp_result_files_100th_list = expand( "output/5_gwas_result_analysis/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif100th_list.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST),
+      most_signif_snp_result_files_ALPHA = expand( "output/5_gwas_result_analysis/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif" + str( ALPHA) + ".txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST)
+   singularity: "phenosnip_singleageanalysis.img"
+   script:
+      "script/gwas_analysis/launch_gwas_result_analysis.R"
+       
+# ===============================================
+# This rule execute the mapping of the
+# identified SNP to the proximal genes
+# ===============================================
+
+rule gwas_result_gene_mapping:
+   params:
+      db_path= "input/" + DB_NAME
+   input:
+      # A file of selected significant GWAS results
+      signif_snp_results = "output/5_gwas_result_analysis/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif{suffix}.txt",
+      # A file of DGRP lines used for the GWAS of the phenotype
+      used_dgrp_lines = "output/3_dgrp_line_analysis/gwas/phenotype_{phenotype}_age_families_{age}W_{data_stat_type}.txt"
+   output:
+      # The gene mapped file
+      signif_snp_result_genemap= "output/6_gwas_result_gene_mapping/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif{suffix}_genemap.txt"
+   singularity: "phenosnip_singleageanalysis.img"
+   shell:
+      """
+      export PYTHONPATH=./src:$PYTHONPATH
+      python ./script/gwas_gene_mapping/gwas_result_gene_mapping.py -g {input.signif_snp_results} -f {input.used_dgrp_lines} -o output/6_gwas_result_gene_mapping -l log -d {params.db_path}
+      """
+
+# ===============================================
+# This rule execute the analysis of gene mapping
+# in order to look at correlations between
+# phenotypes
+# ===============================================
+
+rule gwas_result_gene_mapping_analysis:
+   params:
+      age_list=AGE_LIST,
+      phenotype_name_list=PHENOTYPE_NAME_LIST,
+      suffix_list=SUFFIX_LIST,
+      data_stat_type_list=DATA_STAT_TYPE_LIST,
+      prefered_phenotypes=PREFERED_PHENOTYPES
+   input:
+      # The gene mapped files
+      signif_snp_result_genemap=expand( expand( "output/6_gwas_result_gene_mapping/phenotype_{phenotype}_{age}W_{data_stat_type}_ordered_GWASresults_signif{{suffix}}_genemap.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST), suffix=["100th", "1e-5", ALPHA])
+   output:
+      # The report on gene mapping analysis
+      report="output/7_gwas_gene_mapping_analysis/gwas_gene_mapping_analysis.html"
+   singularity: "phenosnip_singleageanalysis.img"
+   script:
+      "script/gwas_gene_mapping/launch_gwas_gene_mapping_analysis.R"
+      
+      

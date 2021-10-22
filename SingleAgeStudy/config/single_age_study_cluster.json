@@ -1,0 +1,41 @@
+{
+    "documentation": {
+        "cmdline": "Use with snakemake --cluster-config cluster.slurm.cheaha.json --cluster 'sbatch --job-name {cluster.job-name} --ntasks {cluster.ntasks} --cpus-per-task {threads} --mem-per-cpu {cluster.mem-per-cpu} --partition {cluster.partition} --time {cluster.time} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type} --error {cluster.error} --output {cluster.output}'"
+    },
+    "__default__" : {
+        "job-name"       : "Phenosnip.{rule}",
+        "project"        : "b095",
+        "partition"      : "skylake",
+        "time"           : "02:00:00",
+        "nodes-number"   : 1,
+        "cores-number"   : 1,
+        "ntasks"         : 1,
+        "cpus-per-task"  : 1,
+        "mem-per-cpu"    : 2000,
+        "output"         : "log/%j.%a.out",
+        "error"          : "log/%j.%a.err",
+        "mail-user"      : "lionel.spinelli@univ-amu.fr",
+        "mail-type"      : "ALL"
+    },
+    "execute_gwas" : {
+        "time"           : "04:00:00",
+        "mem-per-cpu"    : 4000
+    },
+    "gwas_result_analysis" : {
+        "time"           : "04:00:00",
+        "mem-per-cpu"    : 32000
+    },
+    "gwas_result_gene_mapping_analysis" : {
+        "time"           : "04:00:00",
+        "mem-per-cpu"    : 32000
+    },
+    "execute_epistasis" : {
+        "time"           : "04:00:00",
+        "mem-per-cpu"    : 4000
+    },
+    "epistasis_result_gene_mapping" : {
+        "time"           : "01:00:00",
+        "mem-per-cpu"    : 4000
+    }
+    
+}

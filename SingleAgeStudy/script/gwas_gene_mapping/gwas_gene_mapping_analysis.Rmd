@@ -1,0 +1,67 @@
+---
+title: "SNPnet project - Analysis of GWAS result mapping to gene"
+output:
+  html_document: 
+    theme: cerulean
+    toc: true
+    toc_depth: 4
+---
+
+```{r setOptions, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+[//]: # "Load the libraries"
+```{r loadLibraries, echo=FALSE, warning=FALSE, message=FALSE}
+library( knitr)
+library( magrittr)
+library( DT)
+library( d3heatmap)
+library( heatmaply)
+library( RColorBrewer)
+
+# Comment these variables definitions in production mode (they will be defined by the launching script)
+#WORKING_DIR = "/home/spinelli/workspace/tagc-snpnet/Phenosnip/SingleAgeStudy/workflow"
+#SCRIPT_DIR = file.path( WORKING_DIR, "script/gwas_gene_mapping")
+#OUTPUT_DIR = "/home/spinelli/Documents/Project/Phenosnip/SingleAgeStudyNoPath/output/7_gwas_gene_mapping_analysis"
+#phenotype_name_list= c("Heartrate_StdDev", "SystolicIntervals_SI_on_Hp_Mean")
+#age_list= c( "1", "4")
+#suffix_list=c( "100th", "1e-5", "0.0001")
+#gene_mapping_file_list = unlist( list.files( 
+#  path = "/home/spinelli/Documents/Project/Phenosnip/SingleAgeStudyNoPath/output/6_gwas_result_gene_mapping",
+#  pattern = "*_genemap.txt",
+#  full.names = TRUE))
+#prefered_phenotypes = c( "DiastolicIntervals_Median", "SystolicIntervals_Median", "Heartperiod_Median", 
+# "Heartperiod_StdDevOnMedian", "DiastolicMeanDiameter", "SystolicMeanDiameter", "FractionalShortening")
+
+
+# Define some useful constants
+# -- Number of line below which a mutation is ignored
+EXCLUDED_LINE_NUMBER = 10
+# -- Effect of mutations that is ignored
+EXCLUDED_EFFECT_SET = c( "SYNONYMOUS_CODING")
+# -- Distance to gene above which a mutation is ignored
+MAX_DISTANCE = 1000
+```
+
+[//]: # "Load the various chunks in the various files"
+```{r readChunks, echo=FALSE, warning=FALSE, message=FALSE}
+read_chunk( path=file.path( SCRIPT_DIR, "gwas_gene_mapping_prepare_data.R"))
+read_chunk( path=file.path( SCRIPT_DIR, "gwas_gene_mapping_compare_phenotypes.R"))
+```
+
+## Primary analysis on SC data
+
+### Loading and filtering data
+
+```{r loadingData, results='asis', echo=FALSE}
+<<load_data>>
+<<filter_data>>
+```  
+
+### Correlation between phenotypes
+
+```{r phenotypeCorrelation, results='asis', echo=FALSE}
+<<load_common_gene_jaccard_index_function>>
+<<compute_phenotype_correlation>>
+```  

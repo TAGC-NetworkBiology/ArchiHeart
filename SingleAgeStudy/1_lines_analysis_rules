@@ -1,0 +1,116 @@
+
+# -----------------------------------------------------------------------------
+# Get some constants from config file
+# -----------------------------------------------------------------------------
+DB_NAME=config[ "db_name"]
+WOLBACHIA_COVARIABLE_FILE=config[ "wolbachia_covariable_file"]
+COVARIABLES_FILE=config[ "covariables_file"]
+PHENOTYPE_CORRECTION_MODE = config[ "phenotype_correction_mode"]
+GWAS_TRANSFORMATION_MODE = config[ "gwas_transformation_mode"]
+PREFERED_PHENOTYPES=config[ "prefered_phenotypes"]
+DATA_STAT_TYPE=config[ "data_stat_type"]
+
+# -----------------------------------------------------------------------------
+# Ensure log folder exists
+# ----------------------------------------------------------------------------- 
+import os
+if not os.path.exists( "log"):
+   os.makedirs( "log")
+    
+# ===============================================
+# The global rule requesting for result of
+# single age analysis and list of GWAS to execute 
+# ===============================================
+rule all:
+   input:
+      # The analysis report PDF
+      report = "output/3_dgrp_line_analysis/dgrp_line_analysis.html",
+      # The file listing the GWAS analysis to be done
+      gwas_to_execute_files = expand( "output/3_dgrp_line_analysis/gwas/execute_fastlmm_{data_stat_type}.txt", data_stat_type= DATA_STAT_TYPE),
+      # The file listing the epistasis analysis to be done
+      epistasis_to_execute_files = expand( "output/3_dgrp_line_analysis/epistasis/execute_epistasis_{data_stat_type}.txt", data_stat_type= DATA_STAT_TYPE)
+
+# ===============================================
+# This rule export the required data from the
+# SQLite database to CSV files
+# ===============================================
+rule export_sql_tables:
+   params:
+      db_name = DB_NAME
+   input:
+      db_path= "input/" + DB_NAME
+   output: 
+      # The CSV file with the details on DGRP and control strains
+      strain_data_file= "output/1_export_sql_tables/strain.csv",
+      # The CSV file with the details on the individual flies
+      individual_data_file= "output/1_export_sql_tables/individual.csv",
+      # The CSV with the details on the phenoytpe values per flies
+      phenotype_data_file= "output/1_export_sql_tables/phenotype_data.csv"
+   singularity: "phenosnip_singleageanalysis.img"
+   shell:
+      """
+      export PYTHONPATH=src:$PYTHONPATH
+      python script/export_db_data/export_sql_tables.py -o output -i input -l log -d {params.db_name}
+      """
+      
+# ===============================================
+# This rule execute the analysis of phenotype
+# value of control line (w1118) and impact
+# of date on phenotype values
+# ===============================================
+
+rule control_analysis:
+   input:
+      # The raw data exported from DB
+      strain_data_file = "output/1_export_sql_tables/strain.csv",
+      individual_data_file = "output/1_export_sql_tables/individual.csv",
+      phenotype_data_file = "output/1_export_sql_tables/phenotype_data.csv"
+   output:
+      # The analysis report PDF
+      report = "output/2_control_line_analysis/control_line_analysis.pdf",
+      # The cleaned phenotype data from control line
+      phenotype_data_no_outlier_file = "output/2_control_line_analysis/phenotype_data_control_nooutliers.csv",
+      # The results of the control analysis
+      date_correction_file = "output/2_control_line_analysis/phenotype_data_date_correction.csv"
+   singularity: "phenosnip_singleageanalysis.img"
+   script:
+      "script/control_line_analysis/launch_control_line_analysis.R"
+
+# ===============================================
+# This rule execute the analysis of phenotype
+# value of DGRP lines
+# ===============================================
+
+rule dgrp_line_analysis:
+   params:
+      phenotype_correction_mode = PHENOTYPE_CORRECTION_MODE,
+      gwas_transformation_mode = GWAS_TRANSFORMATION_MODE,
+      prefered_phenotypes=PREFERED_PHENOTYPES
+   input:
+      # The raw data exported from DB
+      strain_data_file = "output/1_export_sql_tables/strain.csv",
+      individual_data_file = "output/1_export_sql_tables/individual.csv",
+      phenotype_data_file = "output/1_export_sql_tables/phenotype_data.csv",
+      # The wolbachia contamination covariable file
+      wolbachia_covariable_file = "input/" + WOLBACHIA_COVARIABLE_FILE,
+      # The global covariables file
+      covariables_file = "input/" + COVARIABLES_FILE,
+      # The results of the control analysis
+      date_correction_file = "output/2_control_line_analysis/phenotype_data_date_correction.csv"
+   output:
+      # The analysis report PDF
+      report = "output/3_dgrp_line_analysis/dgrp_line_analysis.html",
+      # The file listing the GWAS analysis to be done
+      gwas_to_execute_file = expand( "output/3_dgrp_line_analysis/gwas/execute_fastlmm_{data_stat_type}.txt", data_stat_type= DATA_STAT_TYPE),
+      # The file listing the epistasis analysis to be done
+      expistasis_to_execute_files = expand( "output/3_dgrp_line_analysis/epistasis/execute_epistasis_{data_stat_type}.txt", data_stat_type= DATA_STAT_TYPE)
+   singularity: "phenosnip_singleageanalysis.img"
+   script:
+      "script/dgrp_line_analysis/launch_dgrp_line_analysis.R"
+       
+      
+
+
+      
+      
+      

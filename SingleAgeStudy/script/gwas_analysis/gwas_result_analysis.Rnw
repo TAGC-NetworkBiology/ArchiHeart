@@ -1,0 +1,49 @@
+\documentclass{article}
+
+\usepackage{multicol}
+\usepackage{geometry}
+\usepackage{amsmath}
+
+\geometry{
+ a4paper,
+ total={210mm,297mm},
+ left=20mm,
+ right=20mm,
+ top=20mm,
+ bottom=20mm,
+ }
+
+\begin{document}
+
+\title{Ageing in Drosophila Melanogaster heart\\-\\
+        SNPnet project\\-\\
+        Analysis of DGRP data GWAS age by age}
+\author{Christine Brun, Laurent Kremer, Laurent Perrin, Laurence Roder, Lionel
+Spinelli}
+\maketitle
+
+
+<<loadLibraries, fig.keep="all", echo=FALSE, message=F, warning=F>>=
+library( ggplot2)
+library( grid)
+library( png)
+@
+
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+
+\newpage
+
+\section{GWAS results from Fast-LMM}
+
+In this section, we present the results of the Fast-LMM analysis on the various analyzed phenotypes.
+
+<<report_fastlmm_gwas_result, fig.keep="all", echo=FALSE, message=F, warning=F>>=
+  source( file.path( SCRIPT_DIR, "report_fastlmm_gwas_result.R"))
+@
+
+
+
+\end{document}

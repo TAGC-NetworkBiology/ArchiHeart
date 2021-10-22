@@ -1,0 +1,123 @@
+
+# -----------------------------------------------------------------------------
+# Get some constants from config file
+# -----------------------------------------------------------------------------
+DB_NAME=config[ "db_name"]
+DGRP2_SOURCE_FILE = config[ "dgrp2_source_file"]
+ALL_COVARIABLES_FILE = config[ "covariables_file"]
+ALPHA = config[ "alpha"]
+SUFFIX_LIST =[ "100th", "1e-5", ALPHA]
+PREFERED_PHENOTYPES=config[ "prefered_phenotypes"]
+DATA_STAT_TYPE=config[ "data_stat_type"]
+
+# -----------------------------------------------------------------------------
+# Read the file containing all the information on the GWAS to be executed
+# and build list of parametr for the GWAS launch
+# file is formated with headers:
+# age;phenotype_name;input_folder;phenotype_file;families_file
+# -----------------------------------------------------------------------------
+import csv
+import os
+
+AGE_LIST = []
+PHENOTYPE_NAME_LIST = []
+DATA_STAT_TYPE_LIST = []
+for current_data_stat_type in DATA_STAT_TYPE:
+   with open( 'output/3_dgrp_line_analysis/epistasis/execute_epistasis_' + current_data_stat_type + '.txt') as csvfile:
+      csvreader = csv.DictReader( csvfile, delimiter =";")
+      for row in csvreader:
+         current_phenotype_name = row[ "phenotype_name"]
+         if current_phenotype_name in PREFERED_PHENOTYPES:
+            AGE_LIST.append( row[ "age"])
+            PHENOTYPE_NAME_LIST.append( current_phenotype_name)
+            DATA_STAT_TYPE_LIST.append( current_data_stat_type)
+
+print( "Phenotype list =" + str( PHENOTYPE_NAME_LIST))
+print( "Age list =" + str(AGE_LIST))
+print( "Data stat type list =" + str(DATA_STAT_TYPE_LIST))
+
+# ===============================================
+# This global rule that require the resulting
+# file of the GWAS analysis pipeline
+# ===============================================
+
+rule all:
+   input:
+      #snp_set_file = expand( 'output/8_epistasis_snp_sets/snpsets_{age}W_{data_stat_type}.txt', zip, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST)
+      #phenotype_epistasis_result_files = expand( "output/9_epistasis_execution/phenotype_{phenotype}_{age}W_{data_stat_type}.epi.qt.lm.summary", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST)
+      signif_snp_result_genemap= expand( "output/10_epistasis_result_gene_mapping/phenotype_{phenotype}_{age}W_{data_stat_type}.epi.qt.lm.summary_genemap.txt", zip, phenotype=PHENOTYPE_NAME_LIST, age=AGE_LIST, data_stat_type=DATA_STAT_TYPE_LIST)
+
+
+
+# ===============================================
+# This rule extract the list of focus SNP (set A)
+# and target SNP (set B) for Epistatis analysis
+# ===============================================
+rule prepare_epistasis_snp_sets:
+   params:
+      db_name = DB_NAME
+   input: 
+      most_signif_snp_result_files_100th = expand( "output/6_gwas_result_gene_mapping/phenotype_{phenotype}_{{age}}W_{{data_stat_type}}_ordered_GWASresults_signif100th_genemap.txt", phenotype=PREFERED_PHENOTYPES)
+   output: 
+      # The file with the SNP sets to compare
+      snp_set_file = 'output/8_epistasis_snp_sets/snpsets_{age}W_{data_stat_type}.txt',
+      # The file with the SNP sets to keep in genome
+      snp_kept_file = 'output/8_epistasis_snp_sets/snpkept_{age}W_{data_stat_type}.txt'
+   singularity: "phenosnip_singleageanalysis.img"
+   shell:
+      """
+      export PYTHONPATH=src:$PYTHONPATH
+      python script/epistasis_analysis/prepare_snp_sets.py -o output -i input -l log -d {params.db_name} -a {wildcards.age} -t {wildcards.data_stat_type} -p \"{input.most_signif_snp_result_files_100th}\"
+      """
+
+# ==================================================
+# This rule launch the Epistasis analysis using the
+# files produced by the analysis of data
+# (single_age_analysis_rules snakefile)
+# ==================================================
+
+rule execute_epistasis:
+   params:
+      genotype_file = "input/" + DGRP2_SOURCE_FILE,
+      alpha = ALPHA
+   input:
+      # The phenotype data prepared for epistasis analysis (procuded by Single Age Analysis step)
+      phenotype_epistasis_ready_file = 'output/3_dgrp_line_analysis/epistasis/phenotype_{phenotype}_{age}W_{data_stat_type}.txt',
+      # The list fo families (DGRP lines) per phenotype (procuded by Single Age Analysis step)
+      families_epistasis_ready_files = 'output/3_dgrp_line_analysis/epistasis/phenotype_{phenotype}_age_families_{age}W_{data_stat_type}.txt',
+      # The file with the SNP sets to compare
+      snp_sets_file = 'output/8_epistasis_snp_sets/snpsets_{age}W_{data_stat_type}.txt',
+      # The file with the SNP sets to keep in genome
+      snp_kept_file = 'output/8_epistasis_snp_sets/snpkept_{age}W_{data_stat_type}.txt'
+   output:
+      snp_pairs_results = "output/9_epistasis_execution/phenotype_{phenotype}_{age}W_{data_stat_type}.epi.qt.lm.summary"
+   threads: 1
+   singularity: "phenosnip_singleageepistasis.img"
+   shell:
+      """
+      export PYTHONPATH=./src:$PYTHONPATH
+      python ./script/epistasis_analysis/launch_epistasis_execution.py -p {input.phenotype_epistasis_ready_file} -s {input.snp_sets_file} -k {input.snp_kept_file} -a {params.alpha} -g {params.genotype_file} -f {input.families_epistasis_ready_files} -l log
+      """
+      
+# ===============================================
+# This rule execute the mapping of the
+# identified pairs of SNP to the proximal genes
+# ===============================================
+
+rule epistasis_result_gene_mapping:
+   params:
+      db_path= "input/" + DB_NAME
+   input:
+      # A file of selected significant epistasis results
+      signif_snp_results = "output/9_epistasis_execution/phenotype_{phenotype}_{age}W_{data_stat_type}.epi.qt.lm.summary",
+      # A file of DGRP lines used for the epistasis of the phenotype
+      used_dgrp_lines = "output/3_dgrp_line_analysis/epistasis/phenotype_{phenotype}_age_families_{age}W_{data_stat_type}.txt"
+   output:
+      # The gene mapped file
+      signif_snp_result_genemap= "output/10_epistasis_result_gene_mapping/phenotype_{phenotype}_{age}W_{data_stat_type}.epi.qt.lm.summary_genemap.txt"
+   singularity: "phenosnip_singleageanalysis.img"
+   shell:
+      """
+      export PYTHONPATH=./src:$PYTHONPATH
+      python ./script/epistasis_gene_mapping/epistasis_result_gene_mapping.py -e {input.signif_snp_results} -f {input.used_dgrp_lines} -o output/10_epistasis_result_gene_mapping -l log -d {params.db_path}
+      """

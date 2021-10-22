@@ -1,0 +1,266 @@
+---
+title: "SNPnet project"
+output:
+  html_document:
+    date: "`r format(Sys.time(), '%d %B, %Y')`"
+    theme: cerulean
+    toc: false
+---
+
+```{r setOptions, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+[//]: # "Load the libraries" 
+```{r loadLibraries, echo=FALSE, warning=FALSE, message=FALSE}
+library( knitr)
+library( ggplot2)
+library( cowplot)
+library( png)
+library( heritability)
+library( pheatmap)
+library( gplots)
+library( RColorBrewer)
+library( DT)
+library( heatmaply)
+```
+
+[//]: # "Define constants for developmend execution (to comment in production)"
+```{r definingDevConstants, results='asis', echo=FALSE}
+# TO COMMENT IN PRODUCTION
+# WORKING_DIR = "/home/spinelli/Documents/Project/Phenosnip/SingleAgeStudyNoPath"
+# strain_input_file = file.path( WORKING_DIR, "output/1_export_sql_tables/strain.csv")
+# individual_input_file = file.path( WORKING_DIR, "output/1_export_sql_tables/individual.csv")
+# phenotype_data_input_file = file.path( WORKING_DIR, "output/1_export_sql_tables/phenotype_data.csv")
+# wolbachia_covariable_file = file.path( WORKING_DIR, "input/cov_wolbachia.txt")
+# covariable_file = file.path( WORKING_DIR, "input/cov_wolbachia_inversions.txt")
+# PHENOTYPE_CORRECTION_MODE = "REMOVE_OUTLIERS"
+# GWAS_TRANSFORMATION_MODE = "REMOVE_OUTLIER_LINES"
+# date_correction_file = file.path( WORKING_DIR, "output/2_control_line_analysis/phenotype_data_date_correction.csv")
+# OUTPUT_DIR = file.path( WORKING_DIR, "output/3_dgrp_line_analysis")
+# setwd( OUTPUT_DIR)
+# SCRIPT_DIR = file.path( WORKING_DIR, "script/dgrp_line_analysis")
+# PREFERED_PHENOTYPE_SET= c( "DiastolicIntervals_Median", "SystolicIntervals_Median", "Heartperiod_Median", "Heartperiod_StdDevOnMedian", "DiastolicMeanDiameter", "SystolicMeanDiameter", "FractionalShortening")
+# END TO COMMENT
+```
+
+[//]: # "Load the chunks" 
+```{r loadChunks, echo=FALSE, warning=FALSE, message=FALSE}
+read_chunk( path = file.path( SCRIPT_DIR, "common_functions.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "prepare_data.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "analysis_describe_strain_phenotype.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "analysis_statistics_strain_phenotype.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "analysis_compare_phenotypes.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "prepare_gwas_files.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "prepare_fastlmm_execution.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "prepare_epistasis_files.R"))
+read_chunk( path = file.path( SCRIPT_DIR, "prepare_fastepistasis_execution.R"))
+```
+
+[//]: # "Initialize global variable" 
+```{r initializeGlobalVariables, results='asis', echo=FALSE}
+#  Define the lists that will contain a dataframe per age that will contain the phenotype value to use (according to
+# applied correction). One list if for dataframe in LONG format and the other for WIDE format
+DATA_TO_USE_LONG_DATA_DF = list()
+DATA_TO_USE_WIDE_DATA_DF = list()
+# Define the list that will contain a dataframe per age that will 
+# contain information on phenotype statistics
+SUMMARIZED_STATISTICS = list()
+# Define the list that will contain a dataframe for each age that will contain information on mean values of phenotypes in lines
+MEAN_DF = list()
+# Define the list that will contain a dataframe for each age that will contain information on CV values of phenotypes in lines
+CV_DF = list()
+```
+
+
+## Analysis of DGRP lines phenotype values {.tabset}
+
+<!-- FIRST MAIN TAB -->
+### Documentation
+
+Les analyses présentées dans ce rapport s'organisent sous forme de 6 sections majeures: "Documentation", "Global information", "Analysis on Age 1", "Analysis on Age 4", "Preparation of GWAS" et "Preparation of Epistatis":
+
+* Documentation: Explique et détaille toutes les analyses effectuées dans les autres sections.
+
+* Global information : décrit globalement les données (nombre de lignées, lignées controle, lignées par age et fichiers d'entrée utilisés).
+
+* "Analysis on Age 1" et "Analysis on Age 4" détaillent les mêmes analyses pour chacun des ages décrits. Ils sont chacun composés de 3 onglets mineurs détaillant respectivement: 
+
+(i) "Analyses of raw and corrected values" : L'observation des données initiales avec application de divers types de corrections 
+
+(ii) "Global statistics on selected data" : L'analyse statistique des données choisies 
+
+(iii) "Comparison of strain mean values between phenotypes" : La comparaison statistique des phenotypes.
+
+* "Preparation of GWAS" et "Preparation of Epistatis" détaillent les analyses préparatoires aux execution des analyses en GWAS et en Epistasis.
+
+#### Analyses of raw and corrected values
+
+Dans ces analyses, pour chaque phenotype, nous montrons des graphiques des distributions des valeurs du phenotype
+par lignée DGRP. En abscisse sont présentées les lignes, en ordonnée, la valeur du phenotype. Les valeurs d'une lignée
+sont présentées sous forme de boxplots incluant une "moustache" à 1.5IQR et des points pour les valeurs "outliers" en dehors des
+boxplots ces régions. Au dessus de chaque boxplot est représenté le nombre d'individus dans la lignée.
+
+* Le premier graphique représente les données brutes, sans aucun traitement.
+* Le second graphique représente les données dont on a retiré les valeurs déclarées "outliers" (i.e. en dehors de la boite à moustache) 
+soit $\left \{ v / v \in [ Q1 - 1.5 \times IQR; Q3 + 1.5 \times IQR] \right \}$ où $IQR = Q3 - Q1$.
+* Le troisième graphique reprend les données du second en incluant une correction tenant compte de la date d'execution de la mesure
+du phenotype sur la lignée. Cette correction a été estimée à l'étape précédente (analysis of control line) grâce aux mesures 
+effectuées sur la lignées controle (w1118).
+
+Parmi ces trois jeux de données, un seul est retenu pour les analyses successives. Ce choix est effectué via le paramètre 
+"phenotype.correction.mode" présenté en début de rapport dans la table "Options used for analysis". Ce parametre peut prendre trois
+valeurs:
+* NO_CORRECTION: les données choisies sont celles du premier graphique
+* REMOVE_OUTLIERS: les données choisies sont celles du deuxième graphique
+* DATE_CORRECTION: les données choisies sont celles du troisième graphique
+
+Grâce aux données selectionnées, le calcul de moyennes des valeurs par lignée peut-être effectué ainsi que le calcul du 
+coefficient de variation (CV, qui est égal à l'écart-type divisé par la moyenne). Les lignées qui pour un phénotype n'ont pas
+au moins 7 valeurs retenues sont exclues du calcul. Un tableau résume les lignées qui ont été exclues et pour quel(s) phenotype(s)
+elles l'ont été.
+
+Les valeurs de moyennes et de CV sont reprises dans les analyses successives.
+
+#### Global statistics on selected data
+
+Dans ces analyses, nous considérons les données selectionnées dans la précédente partie ainsi que les moyennes et les CV calculés.
+
+* Un premier graphique présente les données du phenotype. En abscisse sont présentées les lignes, en ordonnée, 
+la valeur du phenotype. Les valeurs d'une lignée sont présentées sous forme de boxplots incluant une "moustache" 
+à 1.5IQR et des points pour les valeurs "outliers" en dehors des boxplots ces régions. Le point rouge représente la moyenne. Les
+lignées sont classées par ordre croissant de moyenne.
+* Un deuxième graphique présente la distribution des valeurs de CV pour toutes les lignées. L'ordonnées est la valeur des CV.
+Elles sont représentées sous forme d'un viloin plot afin d'avoir une représentation de leur distribution. Les valeurs individuelles
+sont représentées par des points dans une colonne (dont la largeur n'a aucune signification) afin de voir la véritable position
+des valeurs, notamment des plus extrèmes.
+* Un troisième graphique confronte les valeurs des moyennes avec les valeurs des CV. L'abscisse représente les valeurs de moyenne,
+l'ordonnée, celle des CV. chaque point est une lignée. La correlation entre les valeurs est calculées via un coefficient 
+de Spearman (coefficient sur les rangs).
+
+A la fin de ces analyses, les statistiques sur les données sont présentées dans deux tableaux: le premier présente les
+résultats pour l'ensemble des phenotypes, le second uniquement pour les phenotypes "préférés".
+
+ATTENTION : les nombres de lignées et d'individus indiqués sont ceux obtenus
+après correction après correction (choisie à l'étape précedente par
+"phenotype.correction.mode")
+
+Les indications statistiques exposées sont les suivantes:
+
+* total.nb.lines : nombre total de lignées possédant des valeurs pour ce
+  phénotype
+* total.nb.individuals : nombre total d'individus possédant une valeur pour ce
+  phénotype
+* total.mean : moyenne de toutes les valeurs disponibles pour ce phenotypes
+* total.sd : écart-type de toutes les valeurs disponibles pour ce phenotypes
+* total.cv : CV de toutes les valeurs disponibles pour ce phenotypes (= total.sd/total.mean)
+* nb.used.lines.for.mean : Nombre de lignées ayant assez d'individus pour calculer une moyenne
+* nb.used.individuals.for.mean : Nombre total d'individus dans les lignées précédentes
+* nb.used.lines.for.cv : Nombre de lignées ayant assez d'individus pour calculer un CV
+* nb.used.individuals.for.cv : Nombre total d'individus dans les lignées précédentes
+* cor.mean.cv : Correlation de Spearman entre les moyennes et les CV
+* gen.variance : Variance génétique (Attention : une variance est un carré)
+* env.variance : Variance environnementale (Attention : une variance est un carré)
+* phenotype.variance : Variance du phenotype (Attention : une variance est un carré)
+* H2.homemade : Coefficient H2 (broad heritability coefficient) calculé par une script homemade
+* H2.external : Coefficient H2 (broad heritability coefficient) calculé par une fonction disponible dans un package (il faut
+H2.homemade = H2.external)
+* H2.CI.external : intervale de confiance à 95% du H2
+* H2.mean.replicates.external ; moyenne du nombre réplicat (individus) à travers les lignées (terme employé pour le calcul du H2)
+
+Une dernière série de tableau présente pour chaque phénotype l'analyse de l'effet des covariables choisies (contamination par Wolbachia et inversion génétiques). Cette analyse est menée par une anova sur les moyennes des lignées du phénotype.
+Chaque tableau présente les résultats complets de l'anova : 
+
+* Df = Nombre de degrés de liberté
+* Sum Sq = la somme des variances
+* Mean Sq = la moyenne dela somme des varianes
+* F value = la valeur de statistique de Fisher
+* Pr(>F) = la p-valeur
+
+#### Comparison of strain mean values between phenotypes
+
+Dans cette section, on calcul la moyenne des valeurs des lignées DGRP pour tous les phenotypes. On compare ensuite ces valeurs entre phenotypes via des méthodes de clustering non-supervisées. La valeurs moyenne d'une lignée est calculées à partir des valeurs retenues grâce au choix du parametre "phenotype.correction.mode". Pour être rendues comparables (une moyenne de 'intervalle de temps n'étant pas du même ordre de grandeur qu'une moyenne de diametre par exemple), les valeurs sont centrées réduites (on retire la moyenne globale de toutes les lignées et on divise par l'ecart-type).
+
+Une heatmap des valeurs moyennes centrée réduites est présenté. En colonne, les phenotypes, en ligne les lignées. Une clusterisation des colonnes et les lignes par méthode hiérarchique est effectuée en utilisant la valeur de correlation de Spearman. Le dendogramme des phenotypes permet de voir quels sont les phenotypes qui semblent le plus corrélés entre eux. Les couleurs du dendogramme indiquent la selection des clusters effectuée de manière non-supervisée par le classifieur.
+
+Une second heatmap présente les valeurs de correlation (Spearman) entre phenotypes. Ces valeurs de correlation sont à leur tour clusterisées pour associer les phenotypes entre eux. Les couleurs sur les dendogrammes montrent les clusters sélectionnés en mode non-supervisé.
+
+<!-- SECOND MAIN TAB -->
+### Global information
+
+```{r loadingData, results='asis', echo=FALSE}
+<<load_common_functions>>
+<<load_data>>
+```
+
+<!-- THIRD MAIN TAB -->
+### Analysis on Age 1 {.tabset}
+
+#### Analyses of raw and corrected values
+```{r describePhenotypesAge1, results='asis', echo=FALSE}
+current_age = AGE_SET[1]
+<<describe_phenotypes>>
+```
+
+#### Global statistics on selected data
+```{r statisticsPhenotypesAge1, results='asis', echo=FALSE}
+current_age = AGE_SET[1]
+<<statistics_phenotypes>>
+```
+
+#### Comparison of strain mean values between phenotypes
+
+```{r comparePhenotype1, results='asis', echo=FALSE}
+current_age = AGE_SET[1]
+<<compare_phenotype>>
+```
+
+<!-- FOURTH MAIN TAB -->
+### Analysis on Age 4 {.tabset}
+
+#### Analyses of raw and corrected values
+```{r describePhenotypesAge4, results='asis', echo=FALSE}
+current_age = AGE_SET[2]
+<<describe_phenotypes>>
+```
+
+#### Global statistics on selected data
+```{r statisticsPhenotypesAge4, results='asis', echo=FALSE}
+current_age = AGE_SET[2]
+<<statistics_phenotypes>>
+```
+
+#### Comparison of strain mean values between phenotypes
+
+```{r comparePhenotype4, results='asis', echo=FALSE}
+current_age = AGE_SET[2]
+<<compare_phenotype>>
+```
+
+<!-- FIFTH MAIN TAB -->
+### Preparation of GWAS
+
+```{r prepareGwasFiles, results='asis', echo=FALSE}
+DATA_TO_ANALYZE = "MEAN"
+<<prepare_gwas_files>>
+DATA_TO_ANALYZE = "CV"
+<<prepare_gwas_files>>
+DATA_TO_ANALYZE = "MEAN"
+<<prepare_fastlmm_execution>>
+DATA_TO_ANALYZE = "CV"
+<<prepare_fastlmm_execution>>
+```
+
+<!-- SIXTH MAIN TAB -->
+### Praparation of epistasis
+
+```{r prepareEpistasisFiles, results='asis', echo=FALSE}
+DATA_TO_ANALYZE = "MEAN"
+<<prepare_epistasis_files>>
+DATA_TO_ANALYZE = "CV"
+<<prepare_epistasis_files>>
+DATA_TO_ANALYZE = "MEAN"
+<<prepare_epistasis_execution>>
+DATA_TO_ANALYZE = "CV"
+<<prepare_epistasis_execution>>
+```

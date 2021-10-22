@@ -1,0 +1,59 @@
+\documentclass{article}
+
+\usepackage{multicol}
+\usepackage{geometry}
+\usepackage{amsmath}
+
+\geometry{
+ a4paper,
+ total={210mm,297mm},
+ left=20mm,
+ right=20mm,
+ top=20mm,
+ bottom=20mm,
+ }
+
+\begin{document}
+
+\title{Ageing in Drosophila Melanogaster heart\\-\\
+        SNPnet project\\-\\
+        Validation of control strain usage for normalization}
+\author{Christine Brun, Laurent Kremer, Laurent Perrin, Laurence Roder, Lionel
+Spinelli}
+\maketitle
+
+<<prepare_data, fig.keep="all", echo=FALSE, message=F, warning=F>>=
+
+  source( file.path( SCRIPT_DIR, "prepare_data.R"))
+  cat("\n\n Number of control strains : ", length( RAW_DATA_STRAIN_DF[ which( RAW_DATA_STRAIN_DF[ , STRAIN_CONTROL] == 1), STRAIN_NUMBER]))
+  cat("\n\n Number of DGRP strains : ", length( not_control_strain_set))
+  for( age in AGE_SET){
+    cat("\n\n Number of DGRP strains at age", age, ":", length( unique( RAW_DATA_INDIVIDUAL_DF[ which( 
+                                                                            RAW_DATA_INDIVIDUAL_DF[ , INDIVIDUAL_STRAIN] %in% not_control_strain_set
+                                                                            & RAW_DATA_INDIVIDUAL_DF[ , INDIVIDUAL_AGE] == age),
+                                                                        INDIVIDUAL_STRAIN])))
+  }
+  
+@
+
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+%-------------------------------------------------------------
+
+\newpage
+
+\section{Analysis of control strain and date effect}
+
+In this section, we try to look at the influence of day-to-day experiment on the control strain.
+
+For each phenotype, a linear regression model is computed to analyse the effect of the date on phenotype measure.
+The model is tested through an anova and Cook distances. Then, taking the whole pheotype values through all dates as a single population
+we identify the outliers values as the values outside the range $[ Q_1 - 1.5 \times IQR ; Q3 + 1.5 \times IQR ]$. Those values are removed
+from the data and a new linear regression model is computed with the same indicators as before.
+
+<<control_strain_analysis, fig.keep="all", echo=FALSE, message=F, warning=F>>=
+  source( file.path( SCRIPT_DIR, "control_strain_analysis.R"))
+@
+
+
+\end{document}
